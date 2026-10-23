@@ -45,7 +45,7 @@ function resolvePrompt(prompt) {
  * Sizes come from `DoggoNogoUI.fx.scaleFontPx`, the same 1920x1080 reference scaling the game uses,
  * so the two conditions put type at the same visual size on the same display.
  */
-function paintTextBlock(canvas, { title, lines = [], prompt }) {
+function paintTextBlock(canvas, { title, lines = [], prompt, centerY = 0.5 }) {
     const ctx = canvas.getContext("2d")
     const { scaleFontPx } = DoggoNogoUI.fx
     const w = canvas.width
@@ -61,9 +61,10 @@ function paintTextBlock(canvas, { title, lines = [], prompt }) {
     const titlePx = scaleFontPx(44, canvas)
     const lineH = bodyPx * 1.9
     // The block is centred as a whole, title included, so screens with different numbers of lines
-    // still sit on the same optical centre.
+    // still sit on the same optical centre. `centerY` lifts it to make room for a stimulus demo.
     const blockH = (title ? titlePx * 2.2 : 0) + lines.length * lineH
-    let y = h / 2 - blockH / 2
+    const top = h * centerY - blockH / 2
+    let y = top
 
     if (title) {
         ctx.fillStyle = PLAIN_THEME.ink
@@ -82,6 +83,7 @@ function paintTextBlock(canvas, { title, lines = [], prompt }) {
         ctx.fillText(promptText, w / 2, h * 0.88)
     }
     ctx.restore()
+    return { top, bottom: top + blockH }
 }
 
 /**
@@ -140,9 +142,24 @@ export function plainCoverScreen(canvas, engine) {
  * subtle). The plain condition has no break text, so every such fact is front-loaded into `lines`
  * here — see `plainInstructions` in ./levels.js.
  */
-export function drawPlainInstructionFrame(canvas, _elapsed, config) {
+export function drawPlainInstructionFrame(canvas, elapsed, config) {
     const lines = (DoggoNogoInput.isTouch && config.touchLines) || config.lines || []
-    paintTextBlock(canvas, { title: config.title, lines, prompt: config.prompt })
+    // A level may show its stimulus, as the game's instruction screens do. The text is lifted to
+    // make room, and the demo is centred in the band between it and the prompt.
+    const block = paintTextBlock(canvas, {
+        title: config.title,
+        lines,
+        prompt: config.prompt,
+        centerY: config.drawVisual ? 0.36 : 0.5,
+    })
+    if (!config.drawVisual) return
+    const bandTop = block.bottom + canvas.height * 0.02
+    const bandBottom = canvas.height * 0.83
+    config.drawVisual(canvas.getContext("2d"), canvas, {
+        cy: (bandTop + bandBottom) / 2,
+        height: bandBottom - bandTop,
+        elapsed,
+    })
 }
 
 /**

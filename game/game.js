@@ -1519,6 +1519,11 @@ export const DoggoNogoCore = {
         return phaseCompleteAudio || null
     },
     playPhaseComplete(levelObj) {
+        // The phase-complete cue is the one sound not held on `level.assets`: it is a module-level
+        // fallback that `ensureSharedPhaseCompleteSound` will CREATE on demand, so a host running
+        // without audio cannot silence it by emptying the level's assets or the preload manifest.
+        // Such a host sets `silentAudio` on the level (see game/plain/).
+        if (levelObj && levelObj.silentAudio) return
         const shared = this.ensureSharedPhaseCompleteSound(
             levelObj,
             levelObj?.params?.assetBasePath

@@ -198,9 +198,10 @@ The three seams, which are the whole removal checklist besides the folder:
 |---|---|
 | `game/index.html` | the `?gamified` block (dynamic `import`, so a normal run never fetches the module) and the `...conditionOptions` spread in `runLevel`. |
 | `game/engine.js` | three options — `coverScreen`, `scoreScreen` (+ `dataButton`), `assetManifest` — and `gamified` in the `gameParams` snapshot. The `performance`/`gameParams` block was also moved out of `if (DoggoNogoUI.showScoreScreen)`, which is an improvement worth keeping either way: the summary is data, not display. |
+| `game/game.js` | one guard: `playPhaseComplete` returns early on `levelObj.silentAudio`. The phase-complete cue is the only sound NOT held on `level.assets` — `ensureSharedPhaseCompleteSound` *creates* it on demand from a module-level variable, so emptying the assets and the preload manifest does not reach it, and a silent host had a sound playing over its phase breaks. |
 | `AGENTS.md` | this section. |
 
-No level file, `core.js`, `game.js` or `stimuli.js` change is involved.
+No level file, `core.js` or `stimuli.js` change is involved.
 
 ## Control flow (one run)
 

@@ -24,8 +24,8 @@ import { DoggoNogoInput } from "../input.js"
 import { DoggoNogoPlainStimuli } from "./stimuli.js"
 import { cancelPlainScoreScreen, drawPlainBreak, drawPlainInstructionFrame, PLAIN_THEME } from "./screens.js"
 
-/** The red already used as Level 1's salience cue, and as the Illusion Game's segment colour. */
-const PLAIN_FILL = "#e63946"
+/** Pure red: the plain condition's one stimulus colour, on the flat mid-grey backdrop. */
+const PLAIN_FILL = "#ff0000"
 
 const noop = function () {}
 
@@ -41,6 +41,13 @@ export const plainParams = {
 
 /** Overrides shared by all five plain levels. */
 export const sharedPlainOverrides = {
+    /**
+     * Silences the phase-complete cue, the one sound not held on `level.assets`: it is a
+     * module-level fallback in game.js that is created on demand, so nulling the assets and the
+     * preload manifest does not reach it. Read by `DoggoNogoCore.playPhaseComplete`.
+     */
+    silentAudio: true,
+
     /**
      * No assets to fetch, but the tail of the game's `load` is not optional: it derives the
      * stimulus and player boxes in pixels from the current canvas, and `placeStimulus` samples
@@ -82,7 +89,10 @@ export const sharedPlainOverrides = {
      */
     showInstructionScreen: function (canvas) {
         cancelPlainScoreScreen() // the previous level's end screen, if SPACE was never released on it
-        this.runInstructionScreen(canvas, this.plainInstructions)
+        const config = this.plainInstructions
+        // A `drawVisual` reads the level's own `params` for the stimulus geometry, but the frame
+        // calls it off the config object, so it is bound here rather than written as a closure.
+        this.runInstructionScreen(canvas, config.drawVisual ? { ...config, drawVisual: config.drawVisual.bind(this) } : config)
     },
 
     drawInstructionFrame: drawPlainInstructionFrame,
@@ -162,6 +172,28 @@ export const plainLevelOverrides = {
                 "Do not tap before it appears.",
             ],
             prompt: () => (DoggoNogoInput.isTouch ? "Tap the screen to start" : "Press the DOWN ARROW to start"),
+
+            /**
+             * The stimulus itself, turning, as the gamified instruction screen shows its bone.
+             *
+             * Orientation varies from trial to trial and is irrelevant to the response, which is
+             * easier to show than to say. Drawn at the task's own `stimulusLength` /
+             * `stimulusThickness` and at the same rotation rate as the game's demo, so the two
+             * conditions introduce the stimulus the same way; it is only clamped down if the
+             * available band is shorter than the segment.
+             */
+            drawVisual: function (ctx, canvas, band) {
+                const length = Math.min(canvas.height * this.params.stimulusLength, band.height)
+                const scale = length / (canvas.height * this.params.stimulusLength)
+                DoggoNogoPlainStimuli.drawSegment(ctx, {
+                    centerX: canvas.width / 2,
+                    centerY: band.cy,
+                    length,
+                    thickness: canvas.height * this.params.stimulusThickness * scale,
+                    angle: (band.elapsed / 4200) * Math.PI,
+                    fill: PLAIN_FILL,
+                })
+            },
         },
 
         /**
